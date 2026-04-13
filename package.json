@@ -1,0 +1,49 @@
+{
+  "name": "create-backend",
+  "version": "0.1.0",
+  "description": "A one-command npm scaffolding tool that spins up a fully wired backend",
+  "main": "src/index.js",
+  "bin": {
+    "create-backend": "./bin/create-backend.js"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/ bin/",
+    "format": "prettier --write src/ bin/"
+  },
+  "keywords": [
+    "backend",
+    "scaffolding",
+    "cli",
+    "express",
+    "jwt",
+    "auth",
+    "api",
+    "generator"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "templates/"
+  ],
+  "dependencies": {
+    "commander": "^14.0.3",
+    "fs-extra": "^11.3.4",
+    "ejs": "^3.1.9",
+    "inquirer": "^9.2.15",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  }
+}

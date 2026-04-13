@@ -1,0 +1,30 @@
+const { Sequelize } = require('sequelize');
+require('dotenv').config();
+
+let sequelize;
+
+if (process.env.DATABASE_URL) {
+  sequelize = new Sequelize(process.env.DATABASE_URL);
+} else {
+  {{#if eq db "postgres"}}
+  sequelize = new Sequelize(
+    process.env.DB_NAME || 'quickbackend',
+    process.env.DB_USER || 'postgres',
+    process.env.DB_PASSWORD || 'password',
+    {
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || 5432,
+      dialect: 'postgres',
+      logging: false
+    }
+  );
+  {{else}}
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: './database.sqlite',
+    logging: false
+  });
+  {{/if}}
+}
+
+module.exports = sequelize;
