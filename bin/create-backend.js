@@ -21,6 +21,10 @@ program
   .argument("[projectName]", "Name of the project")
   .option("--db <type>", "Database type (sqlite|postgres|mysql|mongo)")
   .option("--auth <type>", "Auth type (jwt|oauth|none)")
+  .option(
+    "--template <name>",
+    "App template (saas|ecommerce|agency|landing|marketplace|lms)",
+  )
   .option("--with-admin", "Include AdminJS panel")
   .option("--with-storage", "Include file storage")
   .option("--with-ai", "Include AI hooks")
@@ -53,6 +57,22 @@ program
       await generateProject(projectName, options);
 
       spinner.succeed(chalk.green("Backend project created successfully!"));
+
+      // Generate template if specified
+      if (options.template) {
+        const { generateTemplate } = require("../src/templates");
+        const templateSpinner = ora(
+          `Generating ${options.template} template...`,
+        ).start();
+        await generateTemplate(
+          path.join(options.output || process.cwd(), projectName),
+          options.template,
+          options,
+        );
+        templateSpinner.succeed(
+          chalk.green(`${options.template} template generated!`),
+        );
+      }
 
       // Print next steps
       console.log("\n" + chalk.bold("Next steps:"));

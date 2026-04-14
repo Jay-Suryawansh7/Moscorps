@@ -124,11 +124,14 @@ const db: { [key: string]: any } = {};
 export default db;`;
   }
 
-  // SQL (Sequelize) TypeScript - simplified
+  // SQL (Sequelize) TypeScript - with model imports
   return `import sequelize from '../config/database';
+import User from './User';
 
-const db: any = {};
-db.sequelize = sequelize;
+const db: any = {
+  User,
+  sequelize
+};
 
 export default db;`;
 }
