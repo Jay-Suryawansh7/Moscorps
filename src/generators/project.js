@@ -47,8 +47,13 @@ async function generateProject(projectName, options) {
   }
 
   // Generate Admin panel if enabled
+  // Note: AdminJS temporarily disabled due to ESM compatibility issues
+  // See README.md for workaround
   if (options.withAdmin) {
-    await generateAdmin(projectDir, options);
+    // await generateAdmin(projectDir, options);
+    logger.info(
+      "⚠ Admin panel generation temporarily disabled. See README for workaround.",
+    );
   }
 
   // Generate file storage if enabled
@@ -124,6 +129,7 @@ async function generateTsConfig(projectDir) {
       rootDir: "./src",
       strict: false,
       esModuleInterop: true,
+      allowSyntheticDefaultImports: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
       resolveJsonModule: true,
@@ -131,7 +137,7 @@ async function generateTsConfig(projectDir) {
       declarationMap: true,
       sourceMap: true,
       moduleResolution: "NodeNext",
-      allowSyntheticDefaultImports: true,
+      moduleDetection: "force",
     },
     include: ["src/**/*"],
     exclude: ["node_modules", "dist"],
@@ -206,11 +212,14 @@ async function generatePackageJson(projectDir, options) {
     packageJson.devDependencies["@types/passport"] = "^1.0.16";
   }
 
-  // Add admin dependencies
+  // Add admin dependencies - AdminJS v7 has ESM issues, use at your own risk
+  // Note: AdminJS requires additional ESM configuration to work properly
   if (options.withAdmin) {
-    packageJson.dependencies.adminjs = "^7.7.0";
-    packageJson.dependencies["@adminjs/express"] = "^6.0.0";
-    packageJson.dependencies["@adminjs/sequelize"] = "^4.0.0";
+    packageJson.dependencies.adminjs = "7.8.17";
+    packageJson.dependencies["@adminjs/express"] = "6.1.1";
+    packageJson.dependencies["@adminjs/sequelize"] = "4.1.1";
+    // Add ESM shim for AdminJS
+    packageJson.dependencies["esm"] = "^3.2.25";
   }
 
   // Add storage dependencies

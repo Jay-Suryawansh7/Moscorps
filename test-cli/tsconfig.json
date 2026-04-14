@@ -9,6 +9,7 @@
     "rootDir": "./src",
     "strict": false,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
@@ -16,7 +17,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true
+    "moduleDetection": "force"
   },
   "include": [
     "src/**/*"

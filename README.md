@@ -29,10 +29,20 @@ npx create-backend
 - **TypeScript by default** - Full type safety out of the box
 - **Multiple databases** - PostgreSQL, MySQL, SQLite, MongoDB
 - **Authentication** - JWT or OAuth (Google, GitHub)
-- **Admin Panel** - Auto-generated AdminJS interface
+- **Admin Panel** - Auto-generated AdminJS interface (⚠️ temporarily disabled, see below)
 - **File Storage** - Local or S3-compatible storage
 - **Plugin System** - AI hooks, realtime, email, job queues
 - **Production Ready** - Security middleware, error handling, validation
+
+### ⚠️ Admin Panel Temporary Limitation
+
+AdminJS v7 has ESM module compatibility issues with Node.js. To add an admin panel:
+
+1. Generate your project: `npx create-backend my-app --db postgres --auth jwt`
+2. Install AdminJS manually: `npm install adminjs @adminjs/express @adminjs/sequelize`
+3. Follow the [AdminJS TypeScript setup guide](https://docs.adminjs.co/)
+
+We're working on a fix for automatic AdminJS integration.
 
 ## 🎯 CLI Flags
 
