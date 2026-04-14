@@ -1,6 +1,6 @@
-# my-app
+# test-ts
 
-A backend project scaffolded with `create-backend`.
+A TypeScript backend project scaffolded with `create-backend`.
 
 ## Quick Start
 
@@ -10,10 +10,17 @@ cp .env.example .env
 npm run dev
 ```
 
+## Build
+
+```bash
+npm run build
+npm start
+```
+
 ## Project Structure
 
 ```
-my-app/
+test-ts/
 ├── src/
 │   ├── app.js
 │   ├── server.js

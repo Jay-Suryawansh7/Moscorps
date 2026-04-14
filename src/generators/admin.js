@@ -4,11 +4,11 @@ const path = require("path");
 async function generateAdmin(projectDir, options) {
   await fs.ensureDir(path.join(projectDir, "src/admin"));
 
-  const adminContent = `const AdminJS = require('adminjs');
-const AdminJSExpress = require('@adminjs/express');
-const { Sequelize, DataTypes } = require('sequelize');
-const AdminJSSequelize = require('@adminjs/sequelize');
-const db = require('../models');
+  const adminContent = `import AdminJS from 'adminjs';
+import AdminJSExpress from '@adminjs/express';
+import AdminJSSequelize from '@adminjs/sequelize';
+import db from '../models';
+import { Express } from 'express';
 
 AdminJS.registerAdapter(AdminJSSequelize);
 
@@ -25,16 +25,15 @@ const adminJs = new AdminJS({
 
 const adminRouter = AdminJSExpress.buildRouter(adminJs);
 
-module.exports = { adminJs, adminRouter };`;
+export { adminJs, adminRouter };`;
 
-  await fs.writeFile(path.join(projectDir, "src/admin/index.js"), adminContent);
+  await fs.writeFile(path.join(projectDir, "src/admin/index.ts"), adminContent);
 
-  // Update app.js to include admin
-  const appPath = path.join(projectDir, "src/app.js");
+  // Update app.ts to include admin
+  const appPath = path.join(projectDir, "src/app.ts");
   let appContent = await fs.readFile(appPath, "utf-8");
 
-  // Add admin import and route
-  const adminImport = "const { adminJs, adminRouter } = require('./admin');\n";
+  const adminImport = "import { adminJs, adminRouter } from './admin';\n";
   const adminRoute = "\napp.use(adminJs.options.rootPath, adminRouter);\n";
 
   appContent =

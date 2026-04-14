@@ -6,45 +6,44 @@ async function generateDatabase(projectDir, options) {
   await fs.ensureDir(path.join(projectDir, "src/config"));
   await fs.ensureDir(path.join(projectDir, "src/models"));
 
-  // Generate database config based on DB type
+  // Generate database config based on DB type (TypeScript)
   const dbConfig = generateDatabaseConfig(options);
-  await fs.writeFile(path.join(projectDir, "src/config/database.js"), dbConfig);
+  await fs.writeFile(path.join(projectDir, "src/config/database.ts"), dbConfig);
 
-  // Generate models index
+  // Generate models index (TypeScript)
   const modelsIndex = generateModelsIndex(options);
-  await fs.writeFile(path.join(projectDir, "src/models/index.js"), modelsIndex);
+  await fs.writeFile(path.join(projectDir, "src/models/index.ts"), modelsIndex);
 
-  // Generate User model
+  // Generate User model (TypeScript)
   const userModel = generateUserModel(options);
-  await fs.writeFile(path.join(projectDir, "src/models/User.js"), userModel);
+  await fs.writeFile(path.join(projectDir, "src/models/User.ts"), userModel);
 }
 
 function generateDatabaseConfig(options) {
   if (options.db === "mongo") {
-    return `const mongoose = require('mongoose');
-require('dotenv').config();
+    return `import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/' + process.env.npm_package_name;
+dotenv.config();
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => {
-  console.error('❌ MongoDB connection error:', err);
-  process.exit(1);
-});
+const MONGODB_URI: string = process.env.MONGODB_URI || 'mongodb://localhost:27017/' + process.env.npm_package_name;
 
-module.exports = mongoose;`;
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err: Error) => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
+
+export default mongoose;`;
   }
 
   // SQL databases (Sequelize)
-  let config = "";
-
   if (options.db === "postgres") {
-    config = `const { Sequelize } = require('sequelize');
-require('dotenv').config();
+    return `import { Sequelize } from 'sequelize';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'mydb',
@@ -52,7 +51,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD || 'password',
   {
     host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
+    port: parseInt(process.env.DB_PORT || '5432'),
     dialect: 'postgres',
     logging: false
   }
@@ -60,15 +59,17 @@ const sequelize = new Sequelize(
 
 sequelize.authenticate()
   .then(() => console.log('✅ PostgreSQL connected'))
-  .catch(err => {
+  .catch((err: Error) => {
     console.error('❌ PostgreSQL connection error:', err);
     process.exit(1);
   });
 
-module.exports = sequelize;`;
+export default sequelize;`;
   } else if (options.db === "mysql") {
-    config = `const { Sequelize } = require('sequelize');
-require('dotenv').config();
+    return `import { Sequelize } from 'sequelize';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'mydb',
@@ -76,7 +77,7 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD || 'password',
   {
     host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 3306,
+    port: parseInt(process.env.DB_PORT || '3306'),
     dialect: 'mysql',
     logging: false
   }
@@ -84,16 +85,18 @@ const sequelize = new Sequelize(
 
 sequelize.authenticate()
   .then(() => console.log('✅ MySQL connected'))
-  .catch(err => {
+  .catch((err: Error) => {
     console.error('❌ MySQL connection error:', err);
     process.exit(1);
   });
 
-module.exports = sequelize;`;
+export default sequelize;`;
   } else {
     // SQLite
-    config = `const { Sequelize } = require('sequelize');
-require('dotenv').config();
+    return `import { Sequelize } from 'sequelize';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -103,47 +106,51 @@ const sequelize = new Sequelize({
 
 sequelize.authenticate()
   .then(() => console.log('✅ SQLite connected'))
-  .catch(err => {
+  .catch((err: Error) => {
     console.error('❌ SQLite connection error:', err);
     process.exit(1);
   });
 
-module.exports = sequelize;`;
+export default sequelize;`;
   }
-
-  return config;
 }
 
 function generateModelsIndex(options) {
   if (options.db === "mongo") {
-    return `const fs = require('fs');
-const path = require('path');
-const mongoose = require('mongoose');
+    return `import fs from 'fs';
+import path from 'path';
+import mongoose from 'mongoose';
 
-const db = {};
+const db: { [key: string]: mongoose.Model<any> } = {};
 
 fs.readdirSync(__dirname)
-  .filter(file => file !== 'index.js' && file.endsWith('.js'))
+  .filter(file => file !== 'index.ts' && file.endsWith('.ts'))
   .forEach(file => {
     const model = require(path.join(__dirname, file));
     db[model.modelName] = model;
   });
 
-module.exports = db;`;
+export default db;`;
   }
 
-  // SQL (Sequelize)
-  return `const fs = require('fs');
-const path = require('path');
-const sequelize = require('../config/database');
-const Sequelize = require('sequelize');
+  // SQL (Sequelize) TypeScript
+  return `import fs from 'fs';
+import path from 'path';
+import sequelize from '../config/database';
+import { Sequelize, DataTypes, Model, ModelCtor } from 'sequelize';
 
-const db = {};
+interface DB {
+  [key: string]: ModelCtor<Model<any, any>>;
+  sequelize: Sequelize;
+  Sequelize: typeof Sequelize;
+}
+
+const db: DB = {} as DB;
 
 fs.readdirSync(__dirname)
-  .filter(file => file !== 'index.js' && file.endsWith('.js'))
+  .filter(file => file !== 'index.ts' && file.endsWith('.ts'))
   .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+    const model = require(path.join(__dirname, file)).default(sequelize, DataTypes);
     db[model.name] = model;
   });
 
@@ -156,14 +163,21 @@ Object.keys(db).forEach(modelName => {
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-module.exports = db;`;
+export default db;`;
 }
 
 function generateUserModel(options) {
   if (options.db === "mongo") {
-    return `const mongoose = require('mongoose');
+    return `import mongoose, { Document, Schema } from 'mongoose';
 
-const userSchema = new mongoose.Schema({
+interface IUser extends Document {
+  username: string;
+  email: string;
+  password: string;
+  role: 'user' | 'admin';
+}
+
+const userSchema: Schema = new Schema({
   username: {
     type: String,
     required: true,
@@ -192,12 +206,46 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('User', userSchema);`;
+export default mongoose.model<IUser>('User', userSchema);`;
   }
 
-  // SQL (Sequelize)
-  return `module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
+  // SQL (Sequelize) TypeScript
+  return `import { Model, DataTypes, Sequelize } from 'sequelize';
+import sequelize from '../config/database';
+
+interface UserAttributes {
+  id: number;
+  username: string;
+  email: string;
+  password: string;
+  role: 'user' | 'admin';
+}
+
+interface UserCreationAttributes {
+  username: string;
+  email: string;
+  password: string;
+  role?: 'user' | 'admin';
+}
+
+class User extends Model<UserAttributes, UserCreationAttributes> {
+  public id!: number;
+  public username!: string;
+  public email!: string;
+  public password!: string;
+  public role!: 'user' | 'admin';
+
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+User.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true
+    },
     username: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -222,16 +270,15 @@ module.exports = mongoose.model('User', userSchema);`;
       type: DataTypes.ENUM('user', 'admin'),
       defaultValue: 'user'
     }
-  }, {
+  },
+  {
+    sequelize,
+    tableName: 'Users',
     timestamps: true
-  });
+  }
+);
 
-  User.associate = (models) => {
-    // Add associations here
-  };
-
-  return User;
-};`;
+export default User;`;
 }
 
 module.exports = { generateDatabase };

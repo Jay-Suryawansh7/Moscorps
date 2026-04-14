@@ -6,9 +6,10 @@ async function generateStorage(projectDir, options) {
   await fs.ensureDir(path.join(projectDir, "uploads"));
   await fs.ensureDir(path.join(projectDir, "src/routes"));
 
-  // Generate upload middleware
-  const uploadMiddleware = `const multer = require('multer');
-const path = require('path');
+  // Generate upload middleware TypeScript
+  const uploadMiddleware = `import multer from 'multer';
+import path from 'path';
+import { Request } from 'express';
 
 const storage = process.env.STORAGE_TYPE === 's3' 
   ? require('multer-s3')({
@@ -18,18 +19,18 @@ const storage = process.env.STORAGE_TYPE === 's3'
         region: process.env.AWS_REGION
       }),
       bucket: process.env.AWS_BUCKET,
-      key: (req, file, cb) => {
+      key: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
         cb(null, Date.now() + '-' + file.originalname);
       }
     })
   : multer.diskStorage({
       destination: './uploads/',
-      filename: (req, file, cb) => {
+      filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
         cb(null, Date.now() + '-' + file.originalname);
       }
     });
 
-const fileFilter = (req, file, cb) => {
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
@@ -47,57 +48,59 @@ const upload = multer({
   fileFilter
 });
 
-module.exports = upload;`;
+export default upload;`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/middleware/upload.js"),
+    path.join(projectDir, "src/middleware/upload.ts"),
     uploadMiddleware,
   );
 
-  // Generate upload routes
-  const uploadRoutes = `const express = require('express');
-const router = express.Router();
-const upload = require('../middleware/upload');
-const { authenticate } = require('../middleware/auth');
+  // Generate upload routes TypeScript
+  const uploadRoutes = `import { Router, Request, Response } from 'express';
+import upload from '../middleware/upload';
+import { authenticate, AuthRequest } from '../middleware/auth';
 
-router.post('/upload', authenticate, upload.single('file'), (req, res) => {
+const router = Router();
+
+router.post('/upload', authenticate, upload.single('file'), (req: AuthRequest, res: Response) => {
   if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
+    res.status(400).json({ error: 'No file uploaded' });
+    return;
   }
   
   res.json({
     message: 'File uploaded successfully',
     file: {
-      filename: req.file.filename || req.file.key,
-      path: req.file.path || req.file.location,
+      filename: (req.file as any).filename || (req.file as any).key,
+      path: (req.file as any).path || (req.file as any).location,
       size: req.file.size,
       mimetype: req.file.mimetype
     }
   });
 });
 
-router.get('/files/:filename', (req, res) => {
+router.get('/files/:filename', (req: Request, res: Response) => {
   const path = require('path');
   const filePath = path.join(__dirname, '../../uploads', req.params.filename);
   res.sendFile(filePath);
 });
 
-module.exports = router;`;
+export default router;`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/routes/upload.routes.js"),
+    path.join(projectDir, "src/routes/upload.routes.ts"),
     uploadRoutes,
   );
 
   // Update routes index to include upload routes
-  const routesPath = path.join(projectDir, "src/routes/index.js");
+  const routesPath = path.join(projectDir, "src/routes/index.ts");
   let routesContent = await fs.readFile(routesPath, "utf-8");
 
   routesContent =
-    "const uploadRoutes = require('./upload.routes');\n" + routesContent;
+    "import uploadRoutes from './upload.routes';\n" + routesContent;
   routesContent = routesContent.replace(
-    "module.exports",
-    "router.use('/api', uploadRoutes);\n\nmodule.exports",
+    "export default router",
+    "router.use('/api', uploadRoutes);\n\nexport default router",
   );
 
   await fs.writeFile(routesPath, routesContent);

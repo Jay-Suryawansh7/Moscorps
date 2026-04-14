@@ -65,24 +65,55 @@ async function generateBaseApp(projectDir, options) {
   // Create src directory
   await fs.ensureDir(path.join(projectDir, "src"));
 
-  // Generate app.js
+  // Generate app.ts
   const appTemplate = await fs.readFile(
     path.join(__dirname, "../templates/express/app.ejs"),
     "utf-8",
   );
 
-  await fs.writeFile(path.join(projectDir, "src/app.js"), appTemplate);
+  await fs.writeFile(path.join(projectDir, "src/app.ts"), appTemplate);
 
-  // Generate server.js
+  // Generate server.ts
   const serverTemplate = await fs.readFile(
     path.join(__dirname, "../templates/express/server.ejs"),
     "utf-8",
   );
 
-  await fs.writeFile(path.join(projectDir, "src/server.js"), serverTemplate);
+  await fs.writeFile(path.join(projectDir, "src/server.ts"), serverTemplate);
+
+  // Generate tsconfig.json
+  await generateTsConfig(projectDir);
 
   // Generate package.json
   await generatePackageJson(projectDir, options);
+}
+
+async function generateTsConfig(projectDir) {
+  const tsConfig = {
+    compilerOptions: {
+      target: "ES2020",
+      module: "commonjs",
+      lib: ["ES2020"],
+      outDir: "./dist",
+      rootDir: "./src",
+      strict: true,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      forceConsistentCasingInFileNames: true,
+      resolveJsonModule: true,
+      declaration: true,
+      declarationMap: true,
+      sourceMap: true,
+      moduleResolution: "node",
+    },
+    include: ["src/**/*"],
+    exclude: ["node_modules", "dist"],
+  };
+
+  await fs.writeFile(
+    path.join(projectDir, "tsconfig.json"),
+    JSON.stringify(tsConfig, null, 2),
+  );
 }
 
 async function generatePackageJson(projectDir, options) {
@@ -90,10 +121,11 @@ async function generatePackageJson(projectDir, options) {
     name: path.basename(projectDir),
     version: "1.0.0",
     description: "A backend project scaffolded with create-backend",
-    main: "src/server.js",
+    main: "dist/server.js",
     scripts: {
-      start: "node src/server.js",
-      dev: "nodemon src/server.js",
+      build: "tsc",
+      start: "npm run build && node dist/server.js",
+      dev: "ts-node-dev --respawn --transpile-only src/server.ts",
       test: "jest",
     },
     dependencies: {
@@ -104,8 +136,16 @@ async function generatePackageJson(projectDir, options) {
       dotenv: "^16.3.1",
     },
     devDependencies: {
+      typescript: "^5.3.3",
+      "@types/node": "^20.10.0",
+      "@types/express": "^4.17.21",
+      "@types/cors": "^2.8.17",
+      "@types/morgan": "^1.9.9",
+      "ts-node": "^10.9.2",
+      "ts-node-dev": "^2.0.0",
       nodemon: "^3.0.1",
       jest: "^29.7.0",
+      "@types/jest": "^29.5.11",
     },
   };
 
@@ -113,24 +153,30 @@ async function generatePackageJson(projectDir, options) {
   if (options.db === "postgres") {
     packageJson.dependencies.pg = "^8.11.3";
     packageJson.dependencies.sequelize = "^6.32.1";
+    packageJson.devDependencies["@types/pg"] = "^8.10.9";
   } else if (options.db === "mysql") {
     packageJson.dependencies.mysql2 = "^3.6.0";
     packageJson.dependencies.sequelize = "^6.32.1";
   } else if (options.db === "mongo") {
     packageJson.dependencies.mongoose = "^7.6.0";
+    packageJson.devDependencies["@types/mongoose"] = "^5.11.97";
   } else {
     packageJson.dependencies.sqlite3 = "^5.1.6";
     packageJson.dependencies.sequelize = "^6.32.1";
+    packageJson.devDependencies["@types/sqlite3"] = "^3.1.11";
   }
 
   // Add auth dependencies
   if (options.auth === "jwt") {
     packageJson.dependencies.jsonwebtoken = "^9.0.2";
     packageJson.dependencies.bcryptjs = "^2.4.3";
+    packageJson.devDependencies["@types/jsonwebtoken"] = "^9.0.5";
+    packageJson.devDependencies["@types/bcryptjs"] = "^2.4.6";
   } else if (options.auth === "oauth") {
     packageJson.dependencies.passport = "^0.6.0";
     packageJson.dependencies["passport-google-oauth20"] = "^2.0.0";
     packageJson.dependencies["passport-github2"] = "^6.0.0";
+    packageJson.devDependencies["@types/passport"] = "^1.0.16";
   }
 
   // Add admin dependencies
@@ -144,6 +190,7 @@ async function generatePackageJson(projectDir, options) {
   if (options.withStorage) {
     packageJson.dependencies.multer = "^1.4.5-lts.1";
     packageJson.dependencies["multer-s3"] = "^3.0.0";
+    packageJson.devDependencies["@types/multer"] = "^1.4.11";
   }
 
   await fs.writeFile(
@@ -177,6 +224,7 @@ ${options.withStorage ? "# Storage\nSTORAGE_TYPE=local\n# For S3 storage:\n# AWS
 .env
 *.log
 .DS_Store
+dist/
 ${options.db === "sqlite" ? "database.sqlite" : ""}
 ${options.withStorage ? "uploads/" : ""}
 `;
@@ -186,7 +234,7 @@ ${options.withStorage ? "uploads/" : ""}
   // README.md
   const readme = `# ${projectName}
 
-A backend project scaffolded with \`create-backend\`.
+A TypeScript backend project scaffolded with \`create-backend\`.
 
 ## Quick Start
 
@@ -194,6 +242,13 @@ A backend project scaffolded with \`create-backend\`.
 npm install
 cp .env.example .env
 npm run dev
+\`\`\`
+
+## Build
+
+\`\`\`bash
+npm run build
+npm start
 \`\`\`
 
 ## Project Structure

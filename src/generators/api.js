@@ -10,12 +10,10 @@ async function generateApi(projectDir, options) {
     .map((e) => e.trim())
     .filter((e) => e);
 
-  // Generate routes for each entity
   for (const entity of entities) {
     await generateEntityRoutes(projectDir, entity, options);
   }
 
-  // Generate main routes index
   await generateRoutesIndex(projectDir, entities, options);
 }
 
@@ -23,25 +21,25 @@ async function generateEntityRoutes(projectDir, entity, options) {
   const entityLower = entity.toLowerCase();
   const entityPlural = entityLower + "s";
 
-  const controllerFile = `${entityLower}.controller.js`;
-  const routesFile = `${entityLower}.routes.js`;
-  const modelFile = `${entity}.js`;
+  const controllerFile = `${entityLower}.controller.ts`;
+  const routesFile = `${entityLower}.routes.ts`;
+  const modelFile = `${entity}.ts`;
 
-  // Generate model
+  // Generate model TypeScript
   const modelContent = generateModel(entity, options);
   await fs.writeFile(
     path.join(projectDir, "src/models", modelFile),
     modelContent,
   );
 
-  // Generate controller
+  // Generate controller TypeScript
   const controllerContent = generateController(entity, options);
   await fs.writeFile(
     path.join(projectDir, "src/controllers", controllerFile),
     controllerContent,
   );
 
-  // Generate routes
+  // Generate routes TypeScript
   const routesContent = generateRoutes(entity, options);
   await fs.writeFile(
     path.join(projectDir, "src/routes", routesFile),
@@ -51,9 +49,15 @@ async function generateEntityRoutes(projectDir, entity, options) {
 
 function generateModel(entity, options) {
   if (options.db === "mongo") {
-    return `const mongoose = require('mongoose');
+    return `import mongoose, { Document, Schema } from 'mongoose';
 
-const ${entity.toLowerCase()}Schema = new mongoose.Schema({
+interface I${entity} extends Document {
+  title: string;
+  content: string;
+  userId: mongoose.Types.ObjectId;
+}
+
+const ${entity.toLowerCase()}Schema: Schema = new Schema({
   title: {
     type: String,
     required: true,
@@ -64,7 +68,7 @@ const ${entity.toLowerCase()}Schema = new mongoose.Schema({
     default: ''
   },
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
   }
@@ -72,11 +76,41 @@ const ${entity.toLowerCase()}Schema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('${entity}', ${entity.toLowerCase()}Schema);`;
+export default mongoose.model<I${entity}>('${entity}', ${entity.toLowerCase()}Schema);`;
   }
 
-  return `module.exports = (sequelize, DataTypes) => {
-  const ${entity} = sequelize.define('${entity}', {
+  return `import { Model, DataTypes } from 'sequelize';
+import sequelize from '../config/database';
+
+interface ${entity}Attributes {
+  id: number;
+  title: string;
+  content?: string;
+  userId: number;
+}
+
+interface ${entity}CreationAttributes {
+  title: string;
+  content?: string;
+  userId: number;
+}
+
+class ${entity} extends Model<${entity}Attributes, ${entity}CreationAttributes> {
+  public id!: number;
+  public title!: string;
+  public content!: string;
+  public userId!: number;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+${entity}.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true
+    },
     title: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -91,32 +125,30 @@ module.exports = mongoose.model('${entity}', ${entity.toLowerCase()}Schema);`;
       type: DataTypes.INTEGER,
       allowNull: false
     }
-  }, {
+  },
+  {
+    sequelize,
+    tableName: '${entity}s',
     timestamps: true
-  });
+  }
+);
 
-  ${entity}.associate = (models) => {
-    ${entity}.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'user'
-    });
-  };
-
-  return ${entity};
-};`;
+export default ${entity};`;
 }
 
 function generateController(entity, options) {
   const entityLower = entity.toLowerCase();
 
-  return `const { ${entity} } = require('../models');
-const { User } = require('../models');
+  return `import { Request, Response, NextFunction } from 'express';
+import ${entity} from '../models/${entity}';
+import User from '../models/User';
+import { AuthRequest } from '../middleware/auth';
 
-async function getAll(req, res, next) {
+export async function getAll(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const page: number = parseInt(req.query.page as string) || 1;
+    const limit: number = parseInt(req.query.limit as string) || 10;
+    const offset: number = (page - 1) * limit;
     
     const { count, rows } = await ${entity}.findAndCountAll({
       include: [{ model: User, attributes: ['id', 'username', 'email'] }],
@@ -136,14 +168,15 @@ async function getAll(req, res, next) {
   }
 }
 
-async function getOne(req, res, next) {
+export async function getOne(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const ${entityLower} = await ${entity}.findByPk(req.params.id, {
       include: [{ model: User, attributes: ['id', 'username', 'email'] }]
     });
     
     if (!${entityLower}) {
-      return res.status(404).json({ error: '${entity} not found' });
+      res.status(404).json({ error: '${entity} not found' });
+      return;
     }
     
     res.json(${entityLower});
@@ -152,14 +185,14 @@ async function getOne(req, res, next) {
   }
 }
 
-async function create(req, res, next) {
+export async function create(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { title, content } = req.body;
     
     const ${entityLower} = await ${entity}.create({
       title,
       content,
-      userId: req.user.userId
+      userId: req.user?.userId
     });
     
     res.status(201).json(${entityLower});
@@ -168,16 +201,18 @@ async function create(req, res, next) {
   }
 }
 
-async function update(req, res, next) {
+export async function update(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const ${entityLower} = await ${entity}.findByPk(req.params.id);
     
     if (!${entityLower}) {
-      return res.status(404).json({ error: '${entity} not found' });
+      res.status(404).json({ error: '${entity} not found' });
+      return;
     }
     
-    if (${entityLower}.userId !== req.user.userId) {
-      return res.status(403).json({ error: 'Unauthorized' });
+    if (${entityLower}.userId !== req.user?.userId) {
+      res.status(403).json({ error: 'Unauthorized' });
+      return;
     }
     
     await ${entityLower}.update(req.body);
@@ -187,16 +222,18 @@ async function update(req, res, next) {
   }
 }
 
-async function deleteOne(req, res, next) {
+export async function deleteOne(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const ${entityLower} = await ${entity}.findByPk(req.params.id);
     
     if (!${entityLower}) {
-      return res.status(404).json({ error: '${entity} not found' });
+      res.status(404).json({ error: '${entity} not found' });
+      return;
     }
     
-    if (${entityLower}.userId !== req.user.userId && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Unauthorized' });
+    if (${entityLower}.userId !== req.user?.userId && req.user?.role !== 'admin') {
+      res.status(403).json({ error: 'Unauthorized' });
+      return;
     }
     
     await ${entityLower}.destroy();
@@ -204,19 +241,18 @@ async function deleteOne(req, res, next) {
   } catch (error) {
     next(error);
   }
-}
-
-module.exports = { getAll, getOne, create, update, deleteOne };`;
+}`;
 }
 
 function generateRoutes(entity, options) {
   const entityLower = entity.toLowerCase();
   const entityPlural = entityLower + "s";
 
-  return `const express = require('express');
-const router = express.Router();
-const ${entityLower}Controller = require('../controllers/${entityLower}.controller');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+  return `import { Router } from 'express';
+import * as ${entityLower}Controller from '../controllers/${entityLower}.controller';
+import { authenticate, requireAdmin } from '../middleware/auth';
+
+const router = Router();
 
 router.get('/${entityPlural}', authenticate, ${entityLower}Controller.getAll);
 router.get('/${entityPlural}/:id', authenticate, ${entityLower}Controller.getOne);
@@ -224,23 +260,21 @@ router.post('/${entityPlural}', authenticate, ${entityLower}Controller.create);
 router.put('/${entityPlural}/:id', authenticate, ${entityLower}Controller.update);
 router.delete('/${entityPlural}/:id', authenticate, ${entityLower}Controller.deleteOne);
 
-module.exports = router;`;
+export default router;`;
 }
 
 async function generateRoutesIndex(projectDir, entities, options) {
   let imports =
-    "const express = require('express');\nconst router = express.Router();\n\n";
+    "import { Router } from 'express';\nconst router = Router();\n\n";
 
-  // Import auth routes if auth is enabled
   if (options.auth !== "none") {
     imports +=
-      "const authRoutes = require('./auth.routes');\nrouter.use('/auth', authRoutes);\n\n";
+      "import authRoutes from './auth.routes';\nrouter.use('/auth', authRoutes);\n\n";
   }
 
-  // Import entity routes
   entities.forEach((entity) => {
     const entityLower = entity.toLowerCase();
-    imports += `const ${entityLower}Routes = require('./${entityLower}.routes');\n`;
+    imports += `import ${entityLower}Routes from './${entityLower}.routes';\n`;
   });
 
   imports += "\n";
@@ -250,9 +284,9 @@ async function generateRoutesIndex(projectDir, entities, options) {
     imports += `router.use('/api', ${entityLower}Routes);\n`;
   });
 
-  imports += "\nmodule.exports = router;";
+  imports += "\nexport default router;";
 
-  await fs.writeFile(path.join(projectDir, "src/routes/index.js"), imports);
+  await fs.writeFile(path.join(projectDir, "src/routes/index.ts"), imports);
 }
 
 module.exports = { generateApi };

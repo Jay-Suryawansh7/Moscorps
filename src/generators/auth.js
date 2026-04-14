@@ -15,33 +15,32 @@ async function generateAuth(projectDir, options) {
 }
 
 async function generateJwtAuth(projectDir, options) {
-  // Auth routes
-  const authRoutes = `const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/auth.controller');
+  // Auth routes TypeScript
+  const authRoutes = `import { Router } from 'express';
+import * as authController from '../controllers/auth.controller';
+
+const router = Router();
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/logout', authController.logout);
 router.post('/refresh', authController.refresh);
 
-module.exports = router;`;
+export default router;`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/routes/auth.routes.js"),
+    path.join(projectDir, "src/routes/auth.routes.ts"),
     authRoutes,
   );
 
-  // Auth controller
-  const authController = `const authService = require('../services/auth.service');
-const { User } = require('../models');
+  // Auth controller TypeScript
+  const authController = `import { Request, Response, NextFunction } from 'express';
+import * as authService from '../services/auth.service';
 
-async function register(req, res, next) {
+export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { username, email, password } = req.body;
-    
     const result = await authService.register(username, email, password);
-    
     res.status(201).json({
       message: 'User registered successfully',
       user: result.user,
@@ -52,12 +51,10 @@ async function register(req, res, next) {
   }
 }
 
-async function login(req, res, next) {
+export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { email, password } = req.body;
-    
     const result = await authService.login(email, password);
-    
     res.json({
       message: 'Login successful',
       user: result.user,
@@ -68,7 +65,7 @@ async function login(req, res, next) {
   }
 }
 
-async function logout(req, res, next) {
+export async function logout(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
@@ -76,12 +73,10 @@ async function logout(req, res, next) {
   }
 }
 
-async function refresh(req, res, next) {
+export async function refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { token } = req.body;
-    
     const result = await authService.refresh(token);
-    
     res.json({
       message: 'Token refreshed',
       token: result.token
@@ -89,30 +84,39 @@ async function refresh(req, res, next) {
   } catch (error) {
     next(error);
   }
-}
-
-module.exports = { register, login, logout, refresh };`;
+}`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/controllers/auth.controller.js"),
+    path.join(projectDir, "src/controllers/auth.controller.ts"),
     authController,
   );
 
-  // Auth service
-  const authService = `const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const { User } = require('../models');
+  // Auth service TypeScript
+  const authService = `import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import User from '../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '24h';
 
-async function register(username, email, password) {
+interface UserResult {
+  id: number;
+  username: string;
+  email: string;
+}
+
+interface AuthResult {
+  user: UserResult;
+  token: string;
+}
+
+export async function register(username: string, email: string, password: string): Promise<AuthResult> {
   const existingUser = await User.findOne({ where: { email } });
   if (existingUser) {
     throw new Error('User already exists');
   }
   
-  const hashedPassword = await bcrypt.hash(password, 12);
+  const hashedPassword: string = await bcrypt.hash(password, 12);
   
   const user = await User.create({
     username,
@@ -120,7 +124,7 @@ async function register(username, email, password) {
     password: hashedPassword
   });
   
-  const token = generateToken(user.id);
+  const token: string = generateToken(user.id);
   
   return {
     user: { id: user.id, username: user.username, email: user.email },
@@ -128,18 +132,18 @@ async function register(username, email, password) {
   };
 }
 
-async function login(email, password) {
+export async function login(email: string, password: string): Promise<AuthResult> {
   const user = await User.findOne({ where: { email } });
   if (!user) {
     throw new Error('Invalid credentials');
   }
   
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch: boolean = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new Error('Invalid credentials');
   }
   
-  const token = generateToken(user.id);
+  const token: string = generateToken(user.id);
   
   return {
     user: { id: user.id, username: user.username, email: user.email },
@@ -147,9 +151,9 @@ async function login(email, password) {
   };
 }
 
-async function refresh(oldToken) {
+export async function refresh(oldToken: string): Promise<{ token: string }> {
   try {
-    const decoded = jwt.verify(oldToken, JWT_SECRET);
+    const decoded = jwt.verify(oldToken, JWT_SECRET) as { userId: number };
     const token = generateToken(decoded.userId);
     return { token };
   } catch (error) {
@@ -157,59 +161,64 @@ async function refresh(oldToken) {
   }
 }
 
-function generateToken(userId) {
+function generateToken(userId: number): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-}
-
-module.exports = { register, login, refresh, generateToken };`;
+}`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/services/auth.service.js"),
+    path.join(projectDir, "src/services/auth.service.ts"),
     authService,
   );
 
-  // Auth middleware
-  const authMiddleware = `const jwt = require('jsonwebtoken');
+  // Auth middleware TypeScript
+  const authMiddleware = `import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'your-secret-key';
 
-function authenticate(req, res, next) {
+export interface AuthRequest extends Request {
+  user?: { userId: number; role?: string };
+}
+
+export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    res.status(401).json({ error: 'Access token required' });
+    return;
   }
   
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+      res.status(403).json({ error: 'Invalid or expired token' });
+      return;
     }
-    req.user = user;
+    req.user = user as { userId: number; role?: string };
     next();
   });
 }
 
-function requireAdmin(req, res, next) {
+export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
   if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+    res.status(403).json({ error: 'Admin access required' });
+    return;
   }
   next();
-}
-
-module.exports = { authenticate, requireAdmin };`;
+}`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/middleware/auth.js"),
+    path.join(projectDir, "src/middleware/auth.ts"),
     authMiddleware,
   );
 }
 
 async function generateOAuth(projectDir, options) {
-  // OAuth routes
-  const authRoutes = `const express = require('express');
-const passport = require('passport');
-const router = express.Router();
+  // OAuth routes TypeScript
+  const authRoutes = `import { Router } from 'express';
+import passport from '../config/passport';
+
+const router = Router();
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 router.get('/google/callback', passport.authenticate('google', { session: false }), (req, res) => {
@@ -221,34 +230,34 @@ router.get('/github/callback', passport.authenticate('github', { session: false 
   res.json({ user: req.user.user, token: req.user.token });
 });
 
-module.exports = router;`;
+export default router;`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/routes/auth.routes.js"),
+    path.join(projectDir, "src/routes/auth.routes.ts"),
     authRoutes,
   );
 
-  // Passport config
-  const passportConfig = `const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const GitHubStrategy = require('passport-github2').Strategy;
-const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+  // Passport config TypeScript
+  const passportConfig = `import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as GitHubStrategy } from 'passport-github2';
+import jwt from 'jsonwebtoken';
+import User from '../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'your-secret-key';
 
 passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  clientID: process.env.GOOGLE_CLIENT_ID || '',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   callbackURL: '/api/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    let user = await User.findOne({ where: { email: profile.emails[0].value } });
+    let user = await User.findOne({ where: { email: profile.emails?.[0]?.value } });
     
     if (!user) {
       user = await User.create({
         username: profile.displayName,
-        email: profile.emails[0].value,
+        email: profile.emails?.[0]?.value || '',
         password: '',
         role: 'user'
       });
@@ -262,17 +271,17 @@ passport.use(new GoogleStrategy({
 }));
 
 passport.use(new GitHubStrategy({
-  clientID: process.env.GITHUB_CLIENT_ID,
-  clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  clientID: process.env.GITHUB_CLIENT_ID || '',
+  clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
   callbackURL: '/api/auth/github/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    let user = await User.findOne({ where: { email: profile.emails[0].value } });
+    let user = await User.findOne({ where: { email: profile.emails?.[0]?.value } });
     
     if (!user) {
       user = await User.create({
-        username: profile.username,
-        email: profile.emails[0].value,
+        username: profile.username || '',
+        email: profile.emails?.[0]?.value || '',
         password: '',
         role: 'user'
       });
@@ -285,46 +294,52 @@ passport.use(new GitHubStrategy({
   }
 }));
 
-module.exports = passport;`;
+export default passport;`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/config/passport.js"),
+    path.join(projectDir, "src/config/passport.ts"),
     passportConfig,
   );
 
   // Auth middleware (same as JWT)
-  const authMiddleware = `const jwt = require('jsonwebtoken');
+  const authMiddleware = `import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'your-secret-key';
 
-function authenticate(req, res, next) {
+export interface AuthRequest extends Request {
+  user?: { userId: number; role?: string };
+}
+
+export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    res.status(401).json({ error: 'Access token required' });
+    return;
   }
   
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+      res.status(403).json({ error: 'Invalid or expired token' });
+      return;
     }
-    req.user = user;
+    req.user = user as { userId: number; role?: string };
     next();
   });
 }
 
-function requireAdmin(req, res, next) {
+export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
   if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+    res.status(403).json({ error: 'Admin access required' });
+    return;
   }
   next();
-}
-
-module.exports = { authenticate, requireAdmin };`;
+}`;
 
   await fs.writeFile(
-    path.join(projectDir, "src/middleware/auth.js"),
+    path.join(projectDir, "src/middleware/auth.ts"),
     authMiddleware,
   );
 }
