@@ -1,4 +1,5 @@
 const { generateSaasTemplate } = require("./saas");
+const { generateEcommerceTemplate } = require("./ecommerce");
 
 /**
  * Generate template-specific code
@@ -9,8 +10,7 @@ async function generateTemplate(projectDir, template, options) {
       await generateSaasTemplate(projectDir, options);
       break;
     case "ecommerce":
-      // TODO: Implement ecommerce template
-      console.log("⚠️  E-commerce template not yet implemented");
+      await generateEcommerceTemplate(projectDir, options);
       break;
     case "agency":
       // TODO: Implement agency template
