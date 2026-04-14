@@ -8,6 +8,12 @@ const { generateApi } = require("./api");
 const { generateAdmin } = require("./admin");
 const { generateStorage } = require("./storage");
 const { generateDatabase } = require("./database");
+const {
+  generateAIHooks,
+  generateRealtime,
+  generateEmail,
+  generateQueue,
+} = require("../plugins/index");
 const installer = require("../utils/installer");
 const logger = require("../utils/logger");
 
@@ -48,6 +54,26 @@ async function generateProject(projectName, options) {
   // Generate file storage if enabled
   if (options.withStorage) {
     await generateStorage(projectDir, options);
+  }
+
+  // Generate AI hooks if enabled
+  if (options.withAi) {
+    await generateAIHooks(projectDir, options);
+  }
+
+  // Generate realtime if enabled
+  if (options.withRealtime) {
+    await generateRealtime(projectDir, options);
+  }
+
+  // Generate email if enabled
+  if (options.withEmail) {
+    await generateEmail(projectDir, options);
+  }
+
+  // Generate queue if enabled
+  if (options.withQueue) {
+    await generateQueue(projectDir, options);
   }
 
   // Generate config files
