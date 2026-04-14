@@ -118,11 +118,11 @@ async function generateTsConfig(projectDir) {
   const tsConfig = {
     compilerOptions: {
       target: "ES2020",
-      module: "commonjs",
+      module: "NodeNext",
       lib: ["ES2020"],
       outDir: "./dist",
       rootDir: "./src",
-      strict: true,
+      strict: false,
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
@@ -130,7 +130,8 @@ async function generateTsConfig(projectDir) {
       declaration: true,
       declarationMap: true,
       sourceMap: true,
-      moduleResolution: "node",
+      moduleResolution: "NodeNext",
+      allowSyntheticDefaultImports: true,
     },
     include: ["src/**/*"],
     exclude: ["node_modules", "dist"],

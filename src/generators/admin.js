@@ -8,14 +8,13 @@ async function generateAdmin(projectDir, options) {
 import AdminJSExpress from '@adminjs/express';
 import AdminJSSequelize from '@adminjs/sequelize';
 import db from '../models';
-import { Express } from 'express';
 
 AdminJS.registerAdapter(AdminJSSequelize);
 
 const adminJs = new AdminJS({
-  databases: [db.sequelize],
+  databases: [(db as any).sequelize],
   rootPath: '/admin',
-  resources: Object.values(db).filter(model => model.sequelize).map(model => ({
+  resources: Object.values(db as any).filter((model: any) => model.sequelize).map((model: any) => ({
     resource: model,
     options: {
       navigation: { name: 'Admin', icon: 'Database' }

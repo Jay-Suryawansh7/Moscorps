@@ -117,51 +117,18 @@ export default sequelize;`;
 
 function generateModelsIndex(options) {
   if (options.db === "mongo") {
-    return `import fs from 'fs';
-import path from 'path';
-import mongoose from 'mongoose';
+    return `import mongoose from 'mongoose';
 
-const db: { [key: string]: mongoose.Model<any> } = {};
-
-fs.readdirSync(__dirname)
-  .filter(file => file !== 'index.ts' && file.endsWith('.ts'))
-  .forEach(file => {
-    const model = require(path.join(__dirname, file));
-    db[model.modelName] = model;
-  });
+const db: { [key: string]: any } = {};
 
 export default db;`;
   }
 
-  // SQL (Sequelize) TypeScript
-  return `import fs from 'fs';
-import path from 'path';
-import sequelize from '../config/database';
-import { Sequelize, DataTypes, Model, ModelCtor } from 'sequelize';
+  // SQL (Sequelize) TypeScript - simplified
+  return `import sequelize from '../config/database';
 
-interface DB {
-  [key: string]: ModelCtor<Model<any, any>>;
-  sequelize: Sequelize;
-  Sequelize: typeof Sequelize;
-}
-
-const db: DB = {} as DB;
-
-fs.readdirSync(__dirname)
-  .filter(file => file !== 'index.ts' && file.endsWith('.ts'))
-  .forEach(file => {
-    const model = require(path.join(__dirname, file)).default(sequelize, DataTypes);
-    db[model.name] = model;
-  });
-
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
-});
-
+const db: any = {};
 db.sequelize = sequelize;
-db.Sequelize = Sequelize;
 
 export default db;`;
 }

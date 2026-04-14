@@ -150,6 +150,8 @@ export async function getAll(req: AuthRequest, res: Response, next: NextFunction
     const limit: number = parseInt(req.query.limit as string) || 10;
     const offset: number = (page - 1) * limit;
     
+    const userId: number = req.user?.userId || 0;
+    
     const { count, rows } = await ${entity}.findAndCountAll({
       include: [{ model: User, attributes: ['id', 'username', 'email'] }],
       limit,
@@ -188,11 +190,12 @@ export async function getOne(req: AuthRequest, res: Response, next: NextFunction
 export async function create(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { title, content } = req.body;
+    const userId: number = req.user?.userId || 0;
     
     const ${entityLower} = await ${entity}.create({
       title,
       content,
-      userId: req.user?.userId
+      userId
     });
     
     res.status(201).json(${entityLower});
@@ -210,7 +213,8 @@ export async function update(req: AuthRequest, res: Response, next: NextFunction
       return;
     }
     
-    if (${entityLower}.userId !== req.user?.userId) {
+    const userId: number = req.user?.userId || 0;
+    if (${entityLower}.userId !== userId) {
       res.status(403).json({ error: 'Unauthorized' });
       return;
     }
@@ -225,13 +229,15 @@ export async function update(req: AuthRequest, res: Response, next: NextFunction
 export async function deleteOne(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const ${entityLower} = await ${entity}.findByPk(req.params.id);
+    const userId: number = req.user?.userId || 0;
+    const userRole: string | undefined = req.user?.role;
     
     if (!${entityLower}) {
       res.status(404).json({ error: '${entity} not found' });
       return;
     }
     
-    if (${entityLower}.userId !== req.user?.userId && req.user?.role !== 'admin') {
+    if (${entityLower}.userId !== userId && userRole !== 'admin') {
       res.status(403).json({ error: 'Unauthorized' });
       return;
     }
@@ -250,7 +256,7 @@ function generateRoutes(entity, options) {
 
   return `import { Router } from 'express';
 import * as ${entityLower}Controller from '../controllers/${entityLower}.controller';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 

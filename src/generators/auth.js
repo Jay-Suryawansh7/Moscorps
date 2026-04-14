@@ -162,7 +162,7 @@ export async function refresh(oldToken: string): Promise<{ token: string }> {
 }
 
 function generateToken(userId: number): string {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign({ userId: String(userId) }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as any);
 }`;
 
   await fs.writeFile(
