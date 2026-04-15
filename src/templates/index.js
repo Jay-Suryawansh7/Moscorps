@@ -1,9 +1,10 @@
 const { generateSaasTemplate } = require("./saas");
 const { generateEcommerceTemplate } = require("./ecommerce");
+const { generateAgencyTemplate } = require("./agency");
+const { generateLandingTemplate } = require("./landing");
+const { generateMarketplaceTemplate } = require("./marketplace");
+const { generateLMSTemplate } = require("./lms");
 
-/**
- * Generate template-specific code
- */
 async function generateTemplate(projectDir, template, options) {
   switch (template) {
     case "saas":
@@ -13,20 +14,16 @@ async function generateTemplate(projectDir, template, options) {
       await generateEcommerceTemplate(projectDir, options);
       break;
     case "agency":
-      // TODO: Implement agency template
-      console.log("⚠️  Agency template not yet implemented");
+      await generateAgencyTemplate(projectDir, options);
       break;
     case "landing":
-      // TODO: Implement landing template
-      console.log("⚠️  Landing template not yet implemented");
+      await generateLandingTemplate(projectDir, options);
       break;
     case "marketplace":
-      // TODO: Implement marketplace template
-      console.log("⚠️  Marketplace template not yet implemented");
+      await generateMarketplaceTemplate(projectDir, options);
       break;
     case "lms":
-      // TODO: Implement LMS template
-      console.log("⚠️  LMS template not yet implemented");
+      await generateLMSTemplate(projectDir, options);
       break;
     default:
       console.log(`⚠️  Unknown template: ${template}`);
